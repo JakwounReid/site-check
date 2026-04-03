@@ -5,7 +5,7 @@ function getResend() {
   return new Resend(process.env.RESEND_API_KEY);
 }
 
-function scoreColor(score: number) {
+function scoreColor(score: number | null) {
   if (score >= 90) return "#22c55e";
   if (score >= 50) return "#eab308";
   return "#ef4444";
