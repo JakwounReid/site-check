@@ -14,9 +14,9 @@ export interface Opportunity {
 export interface AuditResult {
   url: string;
   scores: {
-    performance: number;
-    seo: number;
-    mobile: number;
+    performance: number | null;
+    seo: number | null;
+    mobile: number | null;
   };
   vitals: {
     lcp: CoreVital;
@@ -46,10 +46,28 @@ function impactFromScore(score: number | null): "High" | "Medium" | "Low" {
   return "Low";
 }
 
+async function fetchSeoFromHtml(url: string): Promise<Pick<AuditResult["seo"], "title" | "description" | "viewport">> {
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; SiteCheck/1.0)" },
+      signal: AbortSignal.timeout(10000),
+    });
+    const html = await res.text();
+    return {
+      title: /<title[\s>][^<]*\S/i.test(html),
+      description: /<meta[^>]+name=["']description["'][^>]+content=["'][^"']+["']/i.test(html) ||
+                   /<meta[^>]+content=["'][^"']+["'][^>]+name=["']description["']/i.test(html),
+      viewport: /<meta[^>]+name=["']viewport["']/i.test(html) ||
+                /<meta[^>]+content=["'][^"']*width[^"']*["'][^>]+name=["']viewport["']/i.test(html),
+    };
+  } catch {
+    return { title: false, description: false, viewport: false };
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function parseAudits(audits: Record<string, any>): {
   vitals: AuditResult["vitals"];
-  seo: Omit<AuditResult["seo"], "sitemap" | "robots">;
   opportunities: Opportunity[];
 } {
   const vitals: AuditResult["vitals"] = {
@@ -74,12 +92,6 @@ function parseAudits(audits: Record<string, any>): {
     },
   };
 
-  const seo = {
-    title: audits["document-title"]?.score === 1,
-    description: audits["meta-description"]?.score === 1,
-    viewport: audits["viewport"]?.score === 1,
-  };
-
   const opportunities: Opportunity[] = Object.values(audits)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .filter((a: any) => a.details?.type === "opportunity" && a.score !== null && a.score < 1)
@@ -97,7 +109,7 @@ function parseAudits(audits: Record<string, any>): {
         : undefined,
     }));
 
-  return { vitals, seo, opportunities };
+  return { vitals, opportunities };
 }
 
 async function fetchStrategy(url: string, strategy: "mobile" | "desktop") {
@@ -105,6 +117,8 @@ async function fetchStrategy(url: string, strategy: "mobile" | "desktop") {
   const endpoint = new URL("https://www.googleapis.com/pagespeedonline/v5/runPagespeed");
   endpoint.searchParams.set("url", url);
   endpoint.searchParams.set("strategy", strategy);
+  endpoint.searchParams.append("category", "performance");
+  endpoint.searchParams.append("category", "seo");
   if (apiKey) endpoint.searchParams.set("key", apiKey);
 
   const res = await fetch(endpoint.toString(), { next: { revalidate: 0 } });
@@ -113,38 +127,34 @@ async function fetchStrategy(url: string, strategy: "mobile" | "desktop") {
 }
 
 export async function runAudit(url: string): Promise<AuditResult> {
-  const [mobile, desktop] = await Promise.all([
+  const baseUrl = new URL(url).origin;
+
+  const [mobile, desktop, htmlSeo, sitemapRes, robotsRes] = await Promise.all([
     fetchStrategy(url, "mobile"),
     fetchStrategy(url, "desktop"),
+    fetchSeoFromHtml(url),
+    fetch(`${baseUrl}/sitemap.xml`, { method: "HEAD" }).catch(() => null),
+    fetch(`${baseUrl}/robots.txt`, { method: "HEAD" }).catch(() => null),
   ]);
 
   const desktopAudits = desktop.lighthouseResult?.audits ?? {};
   const mobileCategories = mobile.lighthouseResult?.categories ?? {};
   const desktopCategories = desktop.lighthouseResult?.categories ?? {};
 
-  const { vitals, seo, opportunities } = parseAudits(desktopAudits);
-
-  // Check sitemap and robots
-  const baseUrl = new URL(url).origin;
-  const [sitemapRes, robotsRes] = await Promise.allSettled([
-    fetch(`${baseUrl}/sitemap.xml`, { method: "HEAD" }),
-    fetch(`${baseUrl}/robots.txt`, { method: "HEAD" }),
-  ]);
+  const { vitals, opportunities } = parseAudits(desktopAudits);
 
   return {
     url,
     scores: {
-      performance: Math.round((desktopCategories.performance?.score ?? 0) * 100),
-      seo: Math.round((desktopCategories.seo?.score ?? 0) * 100),
-      mobile: Math.round((mobileCategories.performance?.score ?? 0) * 100),
+      performance: desktopCategories.performance?.score != null ? Math.round(desktopCategories.performance.score * 100) : null,
+      seo: desktopCategories.seo?.score != null ? Math.round(desktopCategories.seo.score * 100) : null,
+      mobile: mobileCategories.performance?.score != null ? Math.round(mobileCategories.performance.score * 100) : null,
     },
     vitals,
     seo: {
-      ...seo,
-      sitemap:
-        sitemapRes.status === "fulfilled" && sitemapRes.value.ok,
-      robots:
-        robotsRes.status === "fulfilled" && robotsRes.value.ok,
+      ...htmlSeo,
+      sitemap: sitemapRes?.ok ?? false,
+      robots: robotsRes?.ok ?? false,
     },
     opportunities,
   };
