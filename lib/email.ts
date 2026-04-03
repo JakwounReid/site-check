@@ -6,6 +6,7 @@ function getResend() {
 }
 
 function scoreColor(score: number | null) {
+  if (score === null) return "#737373";
   if (score >= 90) return "#22c55e";
   if (score >= 50) return "#eab308";
   return "#ef4444";
