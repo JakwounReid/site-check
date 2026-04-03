@@ -10,11 +10,55 @@ import EmailCapture from "@/components/EmailCapture";
 
 type AuditState = "idle" | "loading" | "done" | "error";
 
+function buildClaudePrompt(result: AuditResult): string {
+  const { url, scores, vitals, seo, opportunities } = result;
+  const seoChecks = Object.entries(seo)
+    .map(([k, v]) => `  - ${k}: ${v ? "✓" : "✗"}`)
+    .join("\n");
+  const issues = opportunities
+    .map((o) => `  - [${o.impact}] ${o.title}: ${o.description}${o.savings ? ` (saves ${o.savings})` : ""}`)
+    .join("\n");
+
+  return `I ran a site audit on ${url} and got the following results. Please analyze them and suggest specific fixes I can implement in my codebase.
+
+## Scores
+- Performance: ${scores.performance}/100
+- SEO: ${scores.seo}/100
+- Mobile: ${scores.mobile}/100
+
+## Core Web Vitals
+- LCP: ${vitals.lcp.displayValue} (${vitals.lcp.score})
+- CLS: ${vitals.cls.displayValue} (${vitals.cls.score})
+- INP: ${vitals.inp.displayValue} (${vitals.inp.score})
+
+## SEO Checks
+${seoChecks}
+
+## Top Issues
+${issues || "  None detected"}
+
+Please prioritize the highest-impact fixes and show me the code changes needed.`;
+}
+
 export default function Home() {
   const [url, setUrl] = useState("");
   const [state, setState] = useState<AuditState>("idle");
   const [result, setResult] = useState<AuditResult | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  async function copyForClaude() {
+    if (!result) return;
+    await navigator.clipboard.writeText(buildClaudePrompt(result));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  function normalizeUrl(raw: string): string {
+    const trimmed = raw.trim();
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    return `https://${trimmed}`;
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -22,10 +66,13 @@ export default function Home() {
     setResult(null);
     setErrorMsg("");
 
+    const normalized = normalizeUrl(url);
+    setUrl(normalized);
+
     const res = await fetch("/api/audit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: url.trim() }),
+      body: JSON.stringify({ url: normalized }),
     });
 
     const data = await res.json();
@@ -60,11 +107,11 @@ export default function Home() {
         <form onSubmit={handleSubmit} className="mb-12">
           <div className="flex flex-col gap-3 sm:flex-row">
             <input
-              type="url"
+              type="text"
               required
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://yourbusiness.com"
+              placeholder="yourbusiness.com"
               className="flex-1 border border-neutral-800 bg-neutral-900 px-5 py-4 text-sm text-white placeholder-neutral-600 focus:border-neutral-600 focus:outline-none"
             />
             <button
@@ -139,14 +186,25 @@ export default function Home() {
             {/* CTA */}
             <section className="border-t border-neutral-800 pt-8 text-center">
               <p className="text-sm text-neutral-500 mb-4">Want these issues fixed?</p>
-              <a
-                href="https://jakwoun.me/build"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 border border-white bg-white px-6 py-3 text-sm font-bold uppercase tracking-widest text-neutral-900 transition-colors hover:bg-neutral-200"
-              >
-                See Web Dev Packages →
-              </a>
+              <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+                <a
+                  href="https://jakwoun.me/build"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 border border-white bg-white px-6 py-3 text-sm font-bold uppercase tracking-widest text-neutral-900 transition-colors hover:bg-neutral-200"
+                >
+                  See Web Dev Packages →
+                </a>
+                <button
+                  onClick={copyForClaude}
+                  className="inline-flex items-center gap-2 border border-neutral-700 bg-neutral-900 px-6 py-3 text-sm font-bold uppercase tracking-widest text-neutral-300 transition-colors hover:border-neutral-500 hover:text-white"
+                >
+                  {copied ? "Copied!" : "Create Prompt from Audit →"}
+                </button>
+              </div>
+              <p className="mt-3 text-xs text-neutral-600">
+                Paste into any AI assistant to get fix suggestions for your codebase.
+              </p>
             </section>
 
           </div>
