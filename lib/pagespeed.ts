@@ -24,9 +24,9 @@ export interface AuditResult {
     inp: CoreVital;
   };
   seo: {
-    title: boolean;
-    description: boolean;
-    viewport: boolean;
+    title: boolean | null;
+    description: boolean | null;
+    viewport: boolean | null;
     sitemap: boolean;
     robots: boolean;
   };
@@ -61,7 +61,7 @@ async function fetchSeoFromHtml(url: string): Promise<Pick<AuditResult["seo"], "
                 /<meta[^>]+content=["'][^"']*width[^"']*["'][^>]+name=["']viewport["']/i.test(html),
     };
   } catch {
-    return { title: false, description: false, viewport: false };
+    return { title: null, description: null, viewport: null };
   }
 }
 

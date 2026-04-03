@@ -18,7 +18,9 @@ export default function SEOChecklist({ seo }: SEOChecklistProps) {
       {(Object.keys(labels) as Array<keyof AuditResult["seo"]>).map((key) => (
         <div key={key} className="flex items-center justify-between px-5 py-4">
           <span className="text-sm text-neutral-300">{labels[key]}</span>
-          {seo[key] ? (
+          {seo[key] === null ? (
+            <span className="text-xs font-semibold text-neutral-500">— Unavailable</span>
+          ) : seo[key] ? (
             <span className="text-xs font-semibold text-green-400">✓ Found</span>
           ) : (
             <span className="text-xs font-semibold text-red-400">✗ Missing</span>
