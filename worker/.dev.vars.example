@@ -1,0 +1,7 @@
+# Copy to .dev.vars and fill in values for local development.
+# .dev.vars is git-ignored — never commit real keys.
+# wrangler dev reads this file automatically.
+
+PAGESPEED_API_KEY=your_key_here
+RESEND_API_KEY=your_key_here
+SITE_URL=http://localhost:8787

@@ -2,10 +2,14 @@
   "name": "site-check",
   "version": "0.1.0",
   "private": true,
+  "workspaces": ["worker"],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "build:export": "NEXT_EXPORT=1 next build",
+    "start": "next start",
+    "dev:worker": "npm run dev -w worker",
+    "deploy:worker": "npm run build:export && npm run deploy -w worker"
   },
   "dependencies": {
     "next": "14.2.5",
