@@ -13,8 +13,8 @@ directory = "../out"
 #   npx wrangler kv:namespace create RATE_LIMIT --preview
 [[kv_namespaces]]
 binding = "RATE_LIMIT"
-id = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-preview_id = "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+id = "625a62b86c6c4693ace8df7e9ab9e162"
+preview_id = "b99b509e56e640b09240e1fad592a5b9"
 
 [vars]
 SITE_URL = "https://jakwoun.me"
