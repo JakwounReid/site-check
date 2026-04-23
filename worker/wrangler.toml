@@ -2,6 +2,7 @@ name = "site-check"
 main = "src/index.ts"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
+workers_dev = true
 
 # Built frontend lives at ../out after `npm run build:export` from repo root.
 # Run that before `wrangler deploy`.
