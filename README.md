@@ -2,7 +2,7 @@
 
 Free, instant website audit tool — speed, SEO, and mobile performance. Built by [Jakwoun Reid](https://jakwoun.me).
 
-**Live:** [site-check.jakwounreid.workers.dev](https://site-check.jakwounreid.workers.dev)
+**Live:** [sitecheck.jakwoun.me](https://sitecheck.jakwoun.me)
 
 ## What it does
 
