@@ -1,0 +1,25 @@
+name = "site-check"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+# Built frontend lives at ../out after `npm run build:export` from repo root.
+# Run that before `wrangler deploy`.
+[assets]
+directory = "../out"
+
+# Create KV namespaces, then paste the IDs here:
+#   npx wrangler kv:namespace create RATE_LIMIT
+#   npx wrangler kv:namespace create RATE_LIMIT --preview
+[[kv_namespaces]]
+binding = "RATE_LIMIT"
+id = "625a62b86c6c4693ace8df7e9ab9e162"
+preview_id = "b99b509e56e640b09240e1fad592a5b9"
+
+[vars]
+SITE_URL = "https://jakwoun.me"
+
+# Secrets — set via CLI, never committed:
+#   npx wrangler secret put PAGESPEED_API_KEY
+#   npx wrangler secret put RESEND_API_KEY

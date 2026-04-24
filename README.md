@@ -2,7 +2,7 @@
 
 Free, instant website audit tool — speed, SEO, and mobile performance. Built by [Jakwoun Reid](https://jakwoun.me).
 
-**Live:** [sitecheck.jakwoun.me](https://sitecheck.jakwoun.me) *(coming soon)*
+**Live:** [site-check.jakwounreid.workers.dev](https://site-check.jakwounreid.workers.dev)
 
 ## What it does
 
@@ -14,12 +14,23 @@ Paste a URL and get an instant audit powered by the Google PageSpeed Insights AP
 - **Top 3 issues** — biggest opportunities with estimated savings
 - **Email report** — sends a clean HTML summary via Resend
 
+## Architecture
+
+```
+Browser → Cloudflare Worker (Hono)
+            ├── /* → Static assets (Next.js export, served from CF edge)
+            ├── /api/audit → PageSpeed Insights API + KV rate limiter
+            └── /api/send-report → Resend REST API
+```
+
+The frontend is a Next.js static export (`out/`). The API runs as a single Hono worker with Cloudflare KV for rate limiting (5 req/IP/hour).
+
 ## Stack
 
-- Next.js 14 (App Router) · TypeScript · Tailwind CSS
-- Google PageSpeed Insights API (free, no billing required)
-- Resend for email delivery
-- Deployed on Vercel
+- **Frontend:** Next.js 14 (App Router) · TypeScript · Tailwind CSS
+- **Backend:** Cloudflare Workers · Hono · Workers KV
+- **APIs:** Google PageSpeed Insights v5 · Resend (direct REST)
+- **Deploy:** Wrangler 4
 
 ## Running locally
 
@@ -27,27 +38,58 @@ Paste a URL and get an instant audit powered by the Google PageSpeed Insights AP
 git clone https://github.com/JakwounReid/site-check.git
 cd site-check
 npm install
-cp .env.local.example .env.local
-# Fill in your API keys
-npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+**Option A — full stack (worker + frontend together):**
 
-## Environment variables
+```bash
+npm run build:export   # build Next.js static export → out/
+npm run dev:worker     # wrangler dev on http://localhost:8787
+```
 
-| Variable | Required | Description |
+**Option B — frontend only (hot reload, no worker needed):**
+
+```bash
+npm run dev            # next dev on http://localhost:3000
+                       # /api/* requests proxy to :8787
+```
+
+For Option B you still need the worker running in a separate terminal.
+
+## Secrets
+
+Secrets are stored in Cloudflare (never in `.env` or committed). Set them once:
+
+```bash
+npx wrangler secret put PAGESPEED_API_KEY
+npx wrangler secret put RESEND_API_KEY
+```
+
+| Secret | Required | Notes |
 |---|---|---|
-| `PAGESPEED_API_KEY` | No | Google PageSpeed API key — free at [console.cloud.google.com](https://console.cloud.google.com). Without it you get ~2 req/min. |
-| `RESEND_API_KEY` | Yes | Get a free key at [resend.com](https://resend.com) (3,000 emails/month free) |
-| `NEXT_PUBLIC_SITE_URL` | No | Your site URL for email CTA links (default: https://jakwoun.me) |
+| `PAGESPEED_API_KEY` | No | Free at [console.cloud.google.com](https://console.cloud.google.com). Without it: ~2 req/min quota. |
+| `RESEND_API_KEY` | Yes | Free at [resend.com](https://resend.com) — 3,000 emails/month. |
 
-## Deploying to Vercel
+`SITE_URL` is a plain var in `worker/wrangler.toml`, not a secret.
 
-1. Push to GitHub
-2. Import project in [vercel.com](https://vercel.com)
-3. Add environment variables in Vercel project settings
-4. Deploy — done
+## KV namespaces
+
+The rate limiter needs two KV namespaces (prod + preview). Create them once:
+
+```bash
+npx wrangler kv:namespace create RATE_LIMIT
+npx wrangler kv:namespace create RATE_LIMIT --preview
+```
+
+Paste the returned IDs into `worker/wrangler.toml` under `[[kv_namespaces]]`.
+
+## Deploying
+
+```bash
+npm run deploy:worker   # build:export + wrangler deploy
+```
+
+This builds the Next.js static export, then deploys worker + assets together. Wrangler uploads changed assets only (content-hashed diffing).
 
 ## Planned paid features (v2+)
 

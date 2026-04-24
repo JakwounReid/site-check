@@ -4,3 +4,8 @@ node_modules/
 .DS_Store
 *.tsbuildinfo
 .vercel
+
+# Cloudflare Workers build artifacts
+out/
+worker/.wrangler/
+worker/.dev.vars
