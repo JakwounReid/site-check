@@ -6,4 +6,5 @@ interface Env {
   PAGESPEED_API_KEY: string;
   RESEND_API_KEY: string;
   SITE_URL: string;
+  ADMIN_KEY: string;
 }

@@ -24,12 +24,19 @@ audit.post("/", async (c) => {
     c.req.header("x-forwarded-for")?.split(",")[0] ??
     "unknown";
 
-  const allowed = await checkRateLimit(ip, c.env);
-  if (!allowed) {
-    return c.json(
-      { error: "Rate limit exceeded. Max 5 audits per hour." },
-      429
-    );
+  const authHeader = c.req.header("authorization") ?? "";
+  const isAdmin =
+    c.env.ADMIN_KEY &&
+    authHeader === `Bearer ${c.env.ADMIN_KEY}`;
+
+  if (!isAdmin) {
+    const allowed = await checkRateLimit(ip, c.env);
+    if (!allowed) {
+      return c.json(
+        { error: "Rate limit exceeded. Max 5 audits per hour." },
+        429
+      );
+    }
   }
 
   const body = await c.req.json<{ url?: string }>().catch(() => null);

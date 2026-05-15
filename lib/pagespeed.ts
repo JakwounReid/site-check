@@ -143,19 +143,26 @@ export async function runAudit(url: string): Promise<AuditResult> {
 
   const { vitals, opportunities } = parseAudits(desktopAudits);
 
+  const seoChecks = {
+    ...htmlSeo,
+    sitemap: sitemapRes?.ok ?? false,
+    robots: robotsRes?.ok ?? false,
+  };
+
+  const seoScore = Math.round(
+    [seoChecks.title, seoChecks.description, seoChecks.viewport, seoChecks.sitemap, seoChecks.robots]
+      .filter(Boolean).length / 5 * 100
+  );
+
   return {
     url,
     scores: {
       performance: desktopCategories.performance?.score != null ? Math.round(desktopCategories.performance.score * 100) : null,
-      seo: desktopCategories.seo?.score != null ? Math.round(desktopCategories.seo.score * 100) : null,
+      seo: seoScore,
       mobile: mobileCategories.performance?.score != null ? Math.round(mobileCategories.performance.score * 100) : null,
     },
     vitals,
-    seo: {
-      ...htmlSeo,
-      sitemap: sitemapRes?.ok ?? false,
-      robots: robotsRes?.ok ?? false,
-    },
+    seo: seoChecks,
     opportunities,
   };
 }

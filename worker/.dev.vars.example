@@ -5,3 +5,4 @@
 PAGESPEED_API_KEY=your_key_here
 RESEND_API_KEY=your_key_here
 SITE_URL=http://localhost:8787
+ADMIN_KEY=your_secret_here
